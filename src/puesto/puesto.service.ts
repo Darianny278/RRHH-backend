@@ -3,16 +3,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { PuestoDto } from './dto/puestoDto';
 import { PuestoEntity } from './puesto.entity';
 import { PuestoRepository } from './puesto.repository';
+import { CandidatoEntity } from 'src/candidato/candidato.entity';
+import { CandidatoRepository } from 'src/candidato/candidato.repository';
 
 @Injectable()
 export class PuestoService {
     constructor(
         @InjectRepository(PuestoEntity)
-        private puestoRepository: PuestoRepository
+        private puestoRepository: PuestoRepository,
+        @InjectRepository(CandidatoEntity)
+        private candidatoRepository: CandidatoRepository
     ){}
 
     async getAll(): Promise<PuestoEntity[]> {
-        const list = await this.puestoRepository.find()
+        const list = await this.puestoRepository.find({relations: ['candidatos']})
 
         if (!list.length) {
             throw new NotFoundException({ message: 'La lista esta vacia' })
@@ -49,6 +53,17 @@ export class PuestoService {
         return { message: 'Puesto creado' }
     }
 
+    async assignCandidato(candidatoId: number, puestoId: number): Promise<void> {
+        const puesto = await this.puestoRepository.findOne({ where: { id: puestoId }, relations: ['candidatos'] } );
+        const candidato = await this.candidatoRepository.findOneBy({ id: candidatoId });
+    
+        if (!puesto || !candidato) {
+          throw new Error('Puesto o candidato no encontrado');
+        }
+    
+        puesto.candidatos.push(candidato);
+        await this.puestoRepository.save(puesto);
+      }
     
     async update(id: number, dto: PuestoDto): Promise<any> {
         const puesto = await this.findById(id)
