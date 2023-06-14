@@ -41,7 +41,7 @@ export class IdiomaService {
         return idioma
     }
 
-    async create(dto: IdiomaDto): Promise<any> {
+    async create(dto): Promise<any> {
         const idioma = this.idiomaRepository.create(dto)
 
         await this.idiomaRepository.save(idioma)

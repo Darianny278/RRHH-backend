@@ -9,7 +9,7 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 30 })
   nombre: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', unique: true })
   email: string;
 
   @Column({ type: 'varchar', length: 30 })

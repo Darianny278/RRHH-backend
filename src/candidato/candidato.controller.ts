@@ -55,6 +55,7 @@ export class CandidatoController {
     async addIdiomaToCandidato(
         @Body() { candidatoId, idiomaId }: any
     ) {
+        console.log('la info',  { candidatoId, idiomaId })
         return await this.candidatoService.addIdioma(candidatoId, idiomaId);
     }
 

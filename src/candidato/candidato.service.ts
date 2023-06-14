@@ -15,6 +15,9 @@ import { ExpLabRepository } from 'src/exp-lab/exp-lab.repository';
 import { ExpLabEntity } from 'src/exp-lab/exp-lab.entity';
 import { UserEntity } from 'src/users/user.entity';
 import { UserRepository } from 'src/users/user.repository';
+import { CapacitacionesDto } from 'src/capacitaciones/dto/capacitacionesDto';
+import { CompetenciasDto } from 'src/competencias/dto/competenciasDto';
+import { ExpLabDto } from 'src/exp-lab/dto/exp-labDto';
 
 @Injectable()
 export class CandidatoService {
@@ -46,7 +49,7 @@ export class CandidatoService {
     }
 
     async findById(id: number): Promise<CandidatoEntity> {
-        const candidato = await this.candidatoRepository.findOneBy({ id: id })
+        const candidato = await this.candidatoRepository.findOne({ where: { id: id }, relations: ['idiomas', 'puestos', 'capacitaciones', 'competencias', 'experiencias'] });
 
         if (!candidato) {
             throw new NotFoundException({ message: 'Candidato no existente' })
@@ -75,7 +78,7 @@ export class CandidatoService {
         return { message: 'Candidato creado' }
     }
 
-    async assignPuesto(candidatoId: number, puestoId: number): Promise<void> {
+    async assignPuesto(candidatoId: number, puestoId: number): Promise<CandidatoEntity> {
         const candidato = await this.candidatoRepository.findOne({ where: { id: candidatoId }, relations: ['puestos'] });
         const puesto = await this.puestoRepository.findOne({ where: { id: puestoId } })
 
@@ -83,18 +86,28 @@ export class CandidatoService {
             throw new Error('Candidato o puesto no encontrado');
         }
 
-        candidato.puestos.push(puesto);
+
+        const puestoIndex = candidato.puestos.findIndex((puesto) => puesto.id === puestoId);
+
+        if (puestoIndex === -1) {
+            candidato.puestos.push(puesto);
+        } else {
+            candidato.puestos.splice(puestoIndex, 1);
+        }
+      
         await this.candidatoRepository.save(candidato);
+
+        return candidato
     }
 
-    async addCapacitacion(candidatoId: number, capacitacion: CapacitacionesEntity): Promise<CapacitacionesEntity> {
+    async addCapacitacion(candidatoId: number, capacitacion: CapacitacionesDto): Promise<CapacitacionesEntity> {
+        console.log(candidatoId, capacitacion)
         const candidato = await this.candidatoRepository.findOne({ where: { id: candidatoId }, relations: ['capacitaciones'] });
 
         if (!candidato) {
             throw new Error('Candidato no encontrado');
         }
 
-        capacitacion.candidato = candidato;
         const nuevaCapacitacion = await this.capacitacionRepository.save(capacitacion);
         candidato.capacitaciones.push(nuevaCapacitacion);
         await this.candidatoRepository.save(candidato);
@@ -102,14 +115,13 @@ export class CandidatoService {
         return nuevaCapacitacion;
     }
 
-    async addCompetencia(candidatoId: number, competencia: CompetenciasEntity): Promise<CompetenciasEntity> {
+    async addCompetencia(candidatoId: number, competencia: CompetenciasDto): Promise<CompetenciasEntity> {
         const candidato = await this.candidatoRepository.findOne({ where: { id: candidatoId }, relations: ['competencias'] });
 
         if (!candidato) {
             throw new Error('Candidato no encontrado');
         }
 
-        competencia.candidato = candidato;
         const nuevaCompetencia = await this.competenciasRepository.save(competencia);
         candidato.competencias.push(nuevaCompetencia);
         await this.candidatoRepository.save(candidato);
@@ -117,14 +129,13 @@ export class CandidatoService {
         return nuevaCompetencia;
     }
 
-    async addExperienciaLaboral(candidatoId: number, experiencia: ExpLabEntity): Promise<ExpLabEntity> {
+    async addExperienciaLaboral(candidatoId: number, experiencia: ExpLabDto): Promise<ExpLabEntity> {
         const candidato = await this.candidatoRepository.findOne({ where: { id: candidatoId }, relations: ['experiencias'] });
 
         if (!candidato) {
             throw new Error('Candidato no encontrado');
         }
 
-        experiencia.candidato = candidato;
         const nuevaExperiencia = await this.expLabRepository.save(experiencia);
         candidato.experiencias.push(nuevaExperiencia);
         await this.candidatoRepository.save(candidato);
@@ -132,7 +143,7 @@ export class CandidatoService {
         return nuevaExperiencia;
     }
 
-    async addIdioma(candidatoId: number, idiomaId: number): Promise<IdiomaEntity> {
+    async addIdioma(candidatoId: number, idiomaId: number): Promise<CandidatoEntity> {
         const candidato = await this.candidatoRepository.findOne({ where: { id: candidatoId }, relations: ['idiomas'] });
 
         if (!candidato) {
@@ -140,20 +151,31 @@ export class CandidatoService {
         }
 
         const idioma = await this.idiomaRepository.findOneBy({ id: idiomaId });
-        candidato.idiomas.push(idioma);
+
+        const idiomaIndex = candidato.idiomas.findIndex((idioma) => idioma.id === idiomaId);
+
+        if (idiomaIndex === -1) {
+            candidato.idiomas.push(idioma);
+        } else {
+            candidato.idiomas.splice(idiomaIndex, 1);
+        }
+      
         await this.candidatoRepository.save(candidato);
 
-        return idioma;
+        return candidato;
     }
 
-    async update(id: number, dto: CandidatoDto): Promise<any> {
+    async update(id: number, dtoCa): Promise<any> {
+        const dto = dtoCa.dto
         const candidato = await this.findById(id)
 
         candidato.nombre = dto.nombre ?? candidato.nombre
         candidato.cedula = dto.cedula ?? candidato.cedula
         candidato.departamento = dto.departamento ?? candidato.departamento
         candidato.salarioAspirante = dto.salarioAspirante ?? candidato.salarioAspirante
-        candidato.recomendado = dto.recomendado ?? candidato.recomendado
+        candidato.recomendado = dto?.recomendado
+
+        console.log('este es actualizado', candidato)
 
         await this.candidatoRepository.save(candidato)
 
